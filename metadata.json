@@ -1,0 +1,7 @@
+{
+  "name": "Skyso Edu - JPA Kerala Study Tracker",
+  "description": "AI-powered 8-week study tracker for the Junior Project Assistant exam (KSBCDC), featuring AI mock tests, study resources, and progress tracking.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
