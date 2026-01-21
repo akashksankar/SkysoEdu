@@ -1,0 +1,19 @@
+
+{
+  "short_name": "Skyso Edu",
+  "name": "Skyso Edu - Kerala JPA Tracker",
+  "icons": [
+    {
+      "src": "https://i.ibb.co/3Y9f3hD6/Add-braces-for-2k-202601210025-modified.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "background_color": "#f8fafc",
+  "display": "standalone",
+  "scope": "/",
+  "theme_color": "#4f46e5",
+  "description": "AI-powered study tracker for Junior Project Assistant exam."
+}
