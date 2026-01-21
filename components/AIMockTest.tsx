@@ -26,17 +26,21 @@ export const AIMockTest: React.FC<AIMockTestProps> = ({ topic, onClose }) => {
       setLoading(true);
       setError(null);
       
-      // Strict adherence to the provided initialization guidelines
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      // Safely access the API key as per the environment requirements
+      const apiKey = process.env.API_KEY;
+      
+      if (!apiKey) {
+        throw new Error("Missing API configuration. Please ensure the API_KEY environment variable is set in your deployment settings.");
+      }
+
+      // Initialize the SDK right before use
+      const ai = new GoogleGenAI({ apiKey });
       
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Generate a mock test for the topic: "${topic}"`,
+        contents: `Create a mock test on: "${topic}"`,
         config: {
-          systemInstruction: `You are an expert Kerala PSC exam content creator. 
-          Generate 5 high-quality, high-difficulty multiple choice questions for the Junior Project Assistant competitive exam.
-          Focus on facts relevant to the Kerala State Backward Classes Development Corporation (KSBCDC) standard.
-          Ensure the language is clear and professional.`,
+          systemInstruction: "You are a senior exam specialist for the Kerala Junior Project Assistant (KSBCDC) exam. Generate 5 unique, challenging multiple-choice questions in JSON format. Focus on high-relevance topics. Ensure answerIndex is an integer (0-3). Provide clear, educational explanations.",
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -49,11 +53,12 @@ export const AIMockTest: React.FC<AIMockTestProps> = ({ topic, onClose }) => {
                     question: { type: Type.STRING },
                     options: { 
                       type: Type.ARRAY, 
-                      items: { type: Type.STRING } 
+                      items: { type: Type.STRING },
+                      description: "Exactly 4 options"
                     },
                     answerIndex: { 
                         type: Type.INTEGER,
-                        description: "The 0-based index of the correct answer"
+                        description: "The index (0, 1, 2, or 3) of the correct answer"
                     },
                     explanation: { type: Type.STRING }
                   },
@@ -68,22 +73,34 @@ export const AIMockTest: React.FC<AIMockTestProps> = ({ topic, onClose }) => {
 
       const text = response.text;
       if (!text) {
-        throw new Error("Empty response from AI service.");
+        throw new Error("AI service returned an empty response. Please try again.");
       }
 
-      // Robust JSON extraction in case the model includes markdown formatting
-      const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
-      const data = JSON.parse(cleanJson);
+      // Robust extraction: removes markdown backticks if present even with JSON mimeType
+      const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      const data = JSON.parse(jsonStr);
       
-      if (!data.questions || !Array.isArray(data.questions)) {
-        throw new Error("Invalid response format received from AI.");
+      if (!data.questions || !Array.isArray(data.questions) || data.questions.length === 0) {
+        throw new Error("The received data format was incorrect. Regenerating...");
       }
 
       setQuestions(data.questions);
       setLoading(false);
     } catch (err: any) {
-      console.error("Gemini API Error:", err);
-      setError(err.message || "Failed to generate AI questions. Check your API key or connection.");
+      console.error("Gemini API Request Failed:", err);
+      
+      let errorMessage = "Failed to load AI questions.";
+      if (err.message?.includes('429')) {
+        errorMessage = "Daily AI limit reached (429). Please try again later.";
+      } else if (err.message?.includes('403') || err.message?.includes('401')) {
+        errorMessage = "Authentication error. Please verify the API key in your Vercel settings.";
+      } else if (err.message?.includes('JSON')) {
+        errorMessage = "Error processing the AI response. Please try again.";
+      } else if (err.message?.includes('API_KEY')) {
+        errorMessage = err.message;
+      }
+
+      setError(errorMessage);
       setLoading(false);
     }
   };
@@ -114,8 +131,8 @@ export const AIMockTest: React.FC<AIMockTestProps> = ({ topic, onClose }) => {
                 <i className="fas fa-brain text-indigo-600 text-xl animate-pulse"></i>
             </div>
         </div>
-        <h3 className="text-2xl font-black text-slate-900 mb-2">Skyso AI Preparing Test</h3>
-        <p className="text-slate-500 font-medium">Crafting 5 challenging questions for:<br/><span className="text-indigo-600 font-bold">{topic}</span></p>
+        <h3 className="text-2xl font-black text-slate-900 mb-2">Skyso AI Generating Test</h3>
+        <p className="text-slate-500 font-medium">Topic: <span className="text-indigo-600 font-bold">{topic}</span></p>
       </div>
     );
   }
@@ -126,11 +143,11 @@ export const AIMockTest: React.FC<AIMockTestProps> = ({ topic, onClose }) => {
         <div className="w-20 h-20 bg-red-50 text-red-500 rounded-3xl flex items-center justify-center text-3xl mb-6">
             <i className="fas fa-circle-exclamation"></i>
         </div>
-        <h3 className="text-2xl font-black text-slate-900 mb-2">Service Temporarily Unavailable</h3>
-        <p className="text-slate-500 mb-8 max-w-sm font-medium">This usually happens if the API key is missing or the usage quota is exceeded.</p>
+        <h3 className="text-2xl font-black text-slate-900 mb-2">Service Error</h3>
+        <p className="text-slate-500 mb-8 max-w-sm font-medium">{error}</p>
         <div className="flex flex-col w-full max-w-xs gap-3">
-            <button onClick={generateQuestions} className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-indigo-100 active:scale-95 transition-all">Try Again</button>
-            <button onClick={onClose} className="bg-slate-100 text-slate-600 px-8 py-4 rounded-2xl font-black active:scale-95 transition-all">Go Back</button>
+            <button onClick={generateQuestions} className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-indigo-100 active:scale-95 transition-all">Retry</button>
+            <button onClick={onClose} className="bg-slate-100 text-slate-600 px-8 py-4 rounded-2xl font-black active:scale-95 transition-all">Close</button>
         </div>
       </div>
     );
@@ -140,10 +157,10 @@ export const AIMockTest: React.FC<AIMockTestProps> = ({ topic, onClose }) => {
     return (
       <div className="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-8 text-center animate-fadeIn">
         <div className="w-24 h-24 bg-indigo-600 text-white rounded-[32px] flex items-center justify-center text-4xl mb-8 shadow-2xl shadow-indigo-200 rotate-6">
-            <i className="fas fa-chart-line"></i>
+            <i className="fas fa-medal"></i>
         </div>
-        <h3 className="text-3xl font-black text-slate-900 mb-2">Mock Results</h3>
-        <p className="text-xl text-slate-600 mb-10">Performance Score: <span className="font-black text-indigo-600">{score} / {questions.length}</span></p>
+        <h3 className="text-3xl font-black text-slate-900 mb-2">Test Complete</h3>
+        <p className="text-xl text-slate-600 mb-10">Score: <span className="font-black text-indigo-600">{score} / {questions.length}</span></p>
         <div className="w-full max-w-sm space-y-3">
             <button onClick={() => {
                 setIsFinished(false);
@@ -151,8 +168,8 @@ export const AIMockTest: React.FC<AIMockTestProps> = ({ topic, onClose }) => {
                 setSelectedAnswer(null);
                 setScore(0);
                 generateQuestions();
-            }} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black shadow-lg shadow-indigo-100 active:scale-95 transition-all">Retake with New Questions</button>
-            <button onClick={onClose} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black active:scale-95 transition-all">End Session</button>
+            }} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black shadow-lg shadow-indigo-100 active:scale-95 transition-all">New Test</button>
+            <button onClick={onClose} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black active:scale-95 transition-all">Done</button>
         </div>
       </div>
     );
@@ -168,12 +185,12 @@ export const AIMockTest: React.FC<AIMockTestProps> = ({ topic, onClose }) => {
                 <i className="fas fa-arrow-left"></i>
             </button>
             <div>
-                <span className="block text-[10px] font-black text-indigo-600 uppercase tracking-widest">Mock Test</span>
+                <span className="block text-[10px] font-black text-indigo-600 uppercase tracking-widest">Mock Module</span>
                 <span className="font-bold text-slate-900 truncate max-w-[150px] block">{topic}</span>
             </div>
         </div>
         <div className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black">
-            {currentIndex + 1} / {questions.length}
+            {currentIndex + 1} of {questions.length}
         </div>
       </header>
 
@@ -216,7 +233,7 @@ export const AIMockTest: React.FC<AIMockTestProps> = ({ topic, onClose }) => {
             <div className="bg-indigo-600 rounded-[32px] p-8 text-white animate-fadeIn shadow-xl shadow-indigo-100 border border-indigo-500">
                 <div className="flex items-center gap-2 mb-4">
                     <i className="fas fa-lightbulb"></i>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em]">Detailed Explanation</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em]">Explanation</p>
                 </div>
                 <p className="text-base leading-relaxed font-bold">{currentQ.explanation}</p>
             </div>
@@ -231,7 +248,7 @@ export const AIMockTest: React.FC<AIMockTestProps> = ({ topic, onClose }) => {
                 selectedAnswer === null ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white shadow-indigo-200 active:scale-95'
             }`}
         >
-            {currentIndex === questions.length - 1 ? 'Finish Challenge' : 'Next Question'}
+            {currentIndex === questions.length - 1 ? 'Finish Test' : 'Next Question'}
         </button>
       </div>
     </div>
