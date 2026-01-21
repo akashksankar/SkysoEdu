@@ -24,13 +24,19 @@ export const AIMockTest: React.FC<AIMockTestProps> = ({ topic, onClose }) => {
   const generateQuestions = async () => {
     try {
       setLoading(true);
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      setError(null);
+      
+      // Strict adherence to the provided initialization guidelines
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Generate 5 high-quality multiple choice questions in English for the Kerala Junior Project Assistant competitive exam specifically on the topic: "${topic}". 
-        Include options, the correct answer index (0-3), and a brief explanation for each. 
-        Focus on previous PSC exam patterns.`,
+        contents: `Generate a mock test for the topic: "${topic}"`,
         config: {
+          systemInstruction: `You are an expert Kerala PSC exam content creator. 
+          Generate 5 high-quality, high-difficulty multiple choice questions for the Junior Project Assistant competitive exam.
+          Focus on facts relevant to the Kerala State Backward Classes Development Corporation (KSBCDC) standard.
+          Ensure the language is clear and professional.`,
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -45,7 +51,10 @@ export const AIMockTest: React.FC<AIMockTestProps> = ({ topic, onClose }) => {
                       type: Type.ARRAY, 
                       items: { type: Type.STRING } 
                     },
-                    answerIndex: { type: Type.NUMBER },
+                    answerIndex: { 
+                        type: Type.INTEGER,
+                        description: "The 0-based index of the correct answer"
+                    },
                     explanation: { type: Type.STRING }
                   },
                   required: ['question', 'options', 'answerIndex', 'explanation']
@@ -57,12 +66,24 @@ export const AIMockTest: React.FC<AIMockTestProps> = ({ topic, onClose }) => {
         }
       });
 
-      const data = JSON.parse(response.text);
+      const text = response.text;
+      if (!text) {
+        throw new Error("Empty response from AI service.");
+      }
+
+      // Robust JSON extraction in case the model includes markdown formatting
+      const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      const data = JSON.parse(cleanJson);
+      
+      if (!data.questions || !Array.isArray(data.questions)) {
+        throw new Error("Invalid response format received from AI.");
+      }
+
       setQuestions(data.questions);
       setLoading(false);
-    } catch (err) {
-      console.error(err);
-      setError("Failed to generate AI questions. Check your connection.");
+    } catch (err: any) {
+      console.error("Gemini API Error:", err);
+      setError(err.message || "Failed to generate AI questions. Check your API key or connection.");
       setLoading(false);
     }
   };
@@ -86,33 +107,43 @@ export const AIMockTest: React.FC<AIMockTestProps> = ({ topic, onClose }) => {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-8 text-center">
-        <div className="w-16 h-16 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-6"></div>
-        <h3 className="text-2xl font-bold text-slate-800 mb-2">Skyso AI Preparing Test</h3>
-        <p className="text-slate-500">Crafting challenging questions for {topic}...</p>
+      <div className="fixed inset-0 z-[100] bg-white/95 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center animate-fadeIn">
+        <div className="relative mb-8">
+            <div className="w-20 h-20 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+                <i className="fas fa-brain text-indigo-600 text-xl animate-pulse"></i>
+            </div>
+        </div>
+        <h3 className="text-2xl font-black text-slate-900 mb-2">Skyso AI Preparing Test</h3>
+        <p className="text-slate-500 font-medium">Crafting 5 challenging questions for:<br/><span className="text-indigo-600 font-bold">{topic}</span></p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-8 text-center">
-        <i className="fas fa-triangle-exclamation text-5xl text-red-500 mb-6"></i>
-        <h3 className="text-2xl font-bold text-slate-800 mb-2">Oops!</h3>
-        <p className="text-slate-500 mb-8">{error}</p>
-        <button onClick={onClose} className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-bold">Go Back</button>
+      <div className="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-8 text-center animate-fadeIn">
+        <div className="w-20 h-20 bg-red-50 text-red-500 rounded-3xl flex items-center justify-center text-3xl mb-6">
+            <i className="fas fa-circle-exclamation"></i>
+        </div>
+        <h3 className="text-2xl font-black text-slate-900 mb-2">Service Temporarily Unavailable</h3>
+        <p className="text-slate-500 mb-8 max-w-sm font-medium">This usually happens if the API key is missing or the usage quota is exceeded.</p>
+        <div className="flex flex-col w-full max-w-xs gap-3">
+            <button onClick={generateQuestions} className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-indigo-100 active:scale-95 transition-all">Try Again</button>
+            <button onClick={onClose} className="bg-slate-100 text-slate-600 px-8 py-4 rounded-2xl font-black active:scale-95 transition-all">Go Back</button>
+        </div>
       </div>
     );
   }
 
   if (isFinished) {
     return (
-      <div className="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-8 text-center">
-        <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-4xl mb-8">
-            <i className="fas fa-trophy"></i>
+      <div className="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-8 text-center animate-fadeIn">
+        <div className="w-24 h-24 bg-indigo-600 text-white rounded-[32px] flex items-center justify-center text-4xl mb-8 shadow-2xl shadow-indigo-200 rotate-6">
+            <i className="fas fa-chart-line"></i>
         </div>
-        <h3 className="text-3xl font-black text-slate-800 mb-2">Test Completed!</h3>
-        <p className="text-xl text-slate-600 mb-8">Your score: <span className="font-bold text-indigo-600">{score} / {questions.length}</span></p>
+        <h3 className="text-3xl font-black text-slate-900 mb-2">Mock Results</h3>
+        <p className="text-xl text-slate-600 mb-10">Performance Score: <span className="font-black text-indigo-600">{score} / {questions.length}</span></p>
         <div className="w-full max-w-sm space-y-3">
             <button onClick={() => {
                 setIsFinished(false);
@@ -120,8 +151,8 @@ export const AIMockTest: React.FC<AIMockTestProps> = ({ topic, onClose }) => {
                 setSelectedAnswer(null);
                 setScore(0);
                 generateQuestions();
-            }} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-indigo-200">Retake New Test</button>
-            <button onClick={onClose} className="w-full bg-slate-100 text-slate-600 py-4 rounded-2xl font-bold">Close Session</button>
+            }} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black shadow-lg shadow-indigo-100 active:scale-95 transition-all">Retake with New Questions</button>
+            <button onClick={onClose} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black active:scale-95 transition-all">End Session</button>
         </div>
       </div>
     );
@@ -130,30 +161,36 @@ export const AIMockTest: React.FC<AIMockTestProps> = ({ topic, onClose }) => {
   const currentQ = questions[currentIndex];
 
   return (
-    <div className="fixed inset-0 z-[100] bg-slate-50 flex flex-col h-screen md:max-w-2xl md:mx-auto md:shadow-2xl">
-      <header className="p-6 bg-white border-b flex items-center justify-between">
-        <div className="flex items-center gap-3">
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><i className="fas fa-xmark text-xl"></i></button>
-            <span className="font-bold text-slate-800">AI Quiz: {topic}</span>
+    <div className="fixed inset-0 z-[100] bg-slate-50 flex flex-col h-screen md:max-w-2xl md:mx-auto md:shadow-2xl overflow-hidden animate-fadeIn">
+      <header className="p-6 bg-white border-b flex items-center justify-between sticky top-0 z-10 pt-[calc(1.5rem+var(--safe-top,0px))]">
+        <div className="flex items-center gap-4">
+            <button onClick={onClose} className="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 flex items-center justify-center hover:text-slate-900 transition-colors">
+                <i className="fas fa-arrow-left"></i>
+            </button>
+            <div>
+                <span className="block text-[10px] font-black text-indigo-600 uppercase tracking-widest">Mock Test</span>
+                <span className="font-bold text-slate-900 truncate max-w-[150px] block">{topic}</span>
+            </div>
         </div>
-        <div className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold uppercase">
-            Q {currentIndex + 1}/{questions.length}
+        <div className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black">
+            {currentIndex + 1} / {questions.length}
         </div>
       </header>
 
-      <div className="flex-1 p-6 overflow-y-auto space-y-6 pb-32">
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-            <h2 className="text-lg font-bold text-slate-800 leading-snug">{currentQ.question}</h2>
+      <div className="flex-1 p-6 overflow-y-auto space-y-6 pb-40 no-scrollbar">
+        <div className="bg-white p-8 rounded-[32px] shadow-sm border border-slate-100">
+            <h2 className="text-xl font-black text-slate-900 leading-tight">{currentQ.question}</h2>
         </div>
 
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-3">
             {currentQ.options.map((opt, i) => (
                 <button
                     key={i}
                     onClick={() => handleSelect(i)}
-                    className={`w-full p-5 rounded-2xl text-left border-2 transition-all font-medium ${
+                    disabled={selectedAnswer !== null}
+                    className={`w-full p-6 rounded-[24px] text-left border-2 transition-all group relative ${
                         selectedAnswer === null 
-                        ? 'bg-white border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/30' 
+                        ? 'bg-white border-slate-100 hover:border-indigo-600 hover:shadow-lg' 
                         : i === currentQ.answerIndex 
                             ? 'bg-emerald-50 border-emerald-500 text-emerald-900' 
                             : selectedAnswer === i 
@@ -161,32 +198,40 @@ export const AIMockTest: React.FC<AIMockTestProps> = ({ topic, onClose }) => {
                                 : 'bg-white border-slate-100 opacity-60'
                     }`}
                 >
-                    <div className="flex items-center justify-between">
-                        <span>{opt}</span>
-                        {selectedAnswer !== null && i === currentQ.answerIndex && <i className="fas fa-check-circle text-emerald-500"></i>}
-                        {selectedAnswer === i && i !== currentQ.answerIndex && <i className="fas fa-times-circle text-red-500"></i>}
+                    <div className="flex items-center gap-4">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs border transition-colors ${
+                            selectedAnswer === null ? 'bg-slate-50 border-slate-200 group-hover:bg-indigo-600 group-hover:text-white' : 
+                            i === currentQ.answerIndex ? 'bg-emerald-500 border-emerald-500 text-white' :
+                            selectedAnswer === i ? 'bg-red-500 border-red-500 text-white' : 'bg-slate-50 border-slate-200 text-slate-400'
+                        }`}>
+                            {String.fromCharCode(65 + i)}
+                        </div>
+                        <span className="font-bold text-slate-800 flex-1">{opt}</span>
                     </div>
                 </button>
             ))}
         </div>
 
         {selectedAnswer !== null && (
-            <div className="bg-indigo-50 border border-indigo-100 p-6 rounded-2xl animate-fadeIn">
-                <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-2">Explanation</p>
-                <p className="text-sm text-indigo-900/80 leading-relaxed font-medium">{currentQ.explanation}</p>
+            <div className="bg-indigo-600 rounded-[32px] p-8 text-white animate-fadeIn shadow-xl shadow-indigo-100 border border-indigo-500">
+                <div className="flex items-center gap-2 mb-4">
+                    <i className="fas fa-lightbulb"></i>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em]">Detailed Explanation</p>
+                </div>
+                <p className="text-base leading-relaxed font-bold">{currentQ.explanation}</p>
             </div>
         )}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-6 bg-white border-t safe-bottom md:max-w-2xl md:mx-auto">
+      <div className="fixed bottom-0 left-0 right-0 p-6 bg-white border-t safe-bottom md:max-w-2xl md:mx-auto z-20">
         <button
             onClick={nextQuestion}
             disabled={selectedAnswer === null}
-            className={`w-full py-4 rounded-2xl font-bold transition-all shadow-lg ${
-                selectedAnswer === null ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white shadow-indigo-200'
+            className={`w-full py-5 rounded-[24px] font-black transition-all shadow-xl text-lg ${
+                selectedAnswer === null ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white shadow-indigo-200 active:scale-95'
             }`}
         >
-            {currentIndex === questions.length - 1 ? 'Finish Quiz' : 'Next Question'}
+            {currentIndex === questions.length - 1 ? 'Finish Challenge' : 'Next Question'}
         </button>
       </div>
     </div>
