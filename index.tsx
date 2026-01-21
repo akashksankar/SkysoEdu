@@ -3,10 +3,10 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 
-// Register Service Worker for APK/PWA functionality
+// Register Service Worker for APK/PWA functionality using relative path
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(err => {
+    navigator.serviceWorker.register('./sw.js').catch(err => {
       console.log('SW registration failed: ', err);
     });
   });
