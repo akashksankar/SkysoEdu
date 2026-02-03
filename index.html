@@ -14,6 +14,18 @@
     <link rel="apple-touch-icon" href="https://i.ibb.co/3Y9f3hD6/Add-braces-for-2k-202601210025-modified.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
@@ -31,6 +43,11 @@
             user-select: none;
             margin: 0;
             padding: 0;
+            transition: background-color 0.3s ease;
+        }
+
+        .dark body {
+            background-color: #020617; /* slate-950 */
         }
 
         /* Android Scrollbar hide */
@@ -50,7 +67,6 @@
             animation: fadeIn 0.3s ease-out forwards;
         }
 
-        /* Native-like button presses */
         button:active {
             transform: scale(0.96);
         }
@@ -68,9 +84,8 @@
 }
 </script>
 </head>
-<body>
+<body class="antialiased">
     <div id="root"></div>
-    <!-- This script tag was missing! This loads your app -->
     <script type="module" src="./index.tsx"></script>
 </body>
 </html>

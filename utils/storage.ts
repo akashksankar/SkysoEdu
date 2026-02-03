@@ -1,5 +1,5 @@
 
-import { Task } from '../types';
+import { Task } from '../types.ts';
 
 const STORAGE_KEY = 'ace_exam_jpa_tasks';
 

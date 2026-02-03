@@ -10,11 +10,11 @@ interface ProgressBarProps {
 export const LinearProgressBar: React.FC<ProgressBarProps> = ({ progress, label, color = 'bg-indigo-600' }) => {
   return (
     <div className="w-full">
-      {label && <div className="flex justify-between mb-1 text-sm font-medium text-gray-700">
+      {label && <div className="flex justify-between mb-1 text-sm font-medium text-gray-700 dark:text-slate-300">
         <span>{label}</span>
         <span>{Math.round(progress)}%</span>
       </div>}
-      <div className="w-full bg-gray-200 rounded-full h-2.5">
+      <div className="w-full bg-gray-200 dark:bg-slate-800 rounded-full h-2.5">
         <div 
           className={`${color} h-2.5 rounded-full transition-all duration-500 ease-out`} 
           style={{ width: `${progress}%` }}
@@ -39,7 +39,7 @@ export const CircularProgressBar: React.FC<ProgressBarProps & { size?: number }>
           stroke="currentColor"
           strokeWidth="10"
           fill="transparent"
-          className="text-gray-100"
+          className="text-gray-100 dark:text-slate-800"
         />
         <circle
           cx={size / 2}
@@ -55,7 +55,7 @@ export const CircularProgressBar: React.FC<ProgressBarProps & { size?: number }>
         />
       </svg>
       <div className="absolute flex flex-col items-center">
-        <span className="text-2xl font-bold text-gray-800">{Math.round(progress)}%</span>
+        <span className="text-2xl font-bold text-gray-800 dark:text-slate-100">{Math.round(progress)}%</span>
       </div>
     </div>
   );

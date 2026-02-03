@@ -1,7 +1,7 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
+import App from './App.tsx';
 
 // Register Service Worker for APK/PWA functionality using relative path
 if ('serviceWorker' in navigator) {

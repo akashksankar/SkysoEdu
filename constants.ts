@@ -1,5 +1,5 @@
 
-import { Category, StudyPlanData } from './types';
+import { Category, StudyPlanData } from './types.ts';
 
 export const STUDY_PLAN: StudyPlanData[] = [
   {
